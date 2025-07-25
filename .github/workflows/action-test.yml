@@ -1,0 +1,59 @@
+name: CI Integration + UI + Dependency Check
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      web:
+        image: php:8.2-apache
+        ports:
+          - 8080:80
+        volumes:
+          - .:/var/www/html
+        options: >-
+          --health-cmd="curl --fail http://localhost || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Wait for web server
+      run: sleep 15
+
+    - name: Run Selenium UI test
+      run: |
+        docker run --rm --network host \
+          -v ${{ github.workspace }}/tests:/tests \
+          node:18-alpine sh -c "npm install selenium-webdriver && node /tests/UITest.mjs"
+
+    - name: Run OWASP Dependency Check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: "MyWebApp"
+        path: "."
+        format: "HTML"
+        out: "dependency-check-report"
+
+    - name: Upload dependency report
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-check-report
+        path: dependency-check-report
+
+    - name: Commit workflow to local Git server
+      run: |
+        git config --global user.name "Lim-Tze-Kit"
+        git config --global user.email "2301861@sit.singaporetech.edu.sg"
+        git remote add local http://localhost:3000/repository.git || true
+        git fetch local || true
+        git add .github/workflows/ci-test.yml
+        git commit -m "Add CI workflow"
+        git push local HEAD:main
