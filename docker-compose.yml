@@ -1,0 +1,21 @@
+services:
+  webserver:
+    build:
+      dockerfile: web.Dockerfile
+      context: .
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./html:/var/www/html
+
+  git-server:
+    build:
+      dockerfile: git.Dockerfile
+      context: .
+    container_name: gitsvr
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./repos:/home/git
