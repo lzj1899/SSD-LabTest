@@ -41,8 +41,9 @@ jobs:
         docker run --rm \
           --network testnet \
           -v ${{ github.workspace }}/tests:/tests \
-          selenium/standalone-chrome \
+          selenium/standalone-chrome:latest-node \
           bash -c "cd /tests && npm install selenium-webdriver && node UITest.mjs"
+
 
     - name: Run OWASP Dependency Check
       uses: dependency-check/Dependency-Check_Action@main
