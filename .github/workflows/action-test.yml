@@ -10,11 +10,11 @@ jobs:
 
     services:
       web:
-        image: php:8.2-apache
+        build:
+          context: .
+          dockerfile: web.dockerfile
         ports:
           - 8080:80
-        volumes:
-          - ./html:/var/www/html
         options: >-
           --health-cmd="curl --fail http://localhost || exit 1"
           --health-interval=10s
@@ -54,6 +54,6 @@ jobs:
         git config --global user.email "2301861@sit.singaporetech.edu.sg"
         git remote add local http://localhost:3000/repository.git || true
         git fetch local || true
-        git add .github/workflows/ci-test.yml
+        git add .github/workflows/action-test.yml
         git commit -m "Add CI workflow"
         git push local HEAD:main
