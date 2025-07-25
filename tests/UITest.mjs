@@ -2,7 +2,7 @@ import {Builder, By, until} from 'selenium-webdriver';
 let driver = await new Builder().forBrowser('chrome').build();
 
 try {
-  await driver.get('http://localhost:8080');
+  await driver.get('http://webapp/index.html');
   let input = await driver.findElement(By.name('query'));
   await input.sendKeys('test');
   await input.submit();

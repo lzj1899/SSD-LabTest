@@ -8,31 +8,41 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    services:
-      web:
-        image: php:8.2-apache
-        ports:
-          - 8080:80
-        volumes:
-          - .:/var/www/html
-        options: >-
-          --health-cmd="curl --fail http://localhost || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: Wait for web server
-      run: sleep 15
+    - name: Create test network
+      run: docker network create testnet
 
-    - name: Run Selenium UI test
+    - name: Build web app container
+      run: docker build -f web.Dockerfile -t my-php-app .
+
+    - name: Start web app on custom network
       run: |
-        docker run --rm --network host \
+        docker run -d --rm --name webapp \
+          --network testnet \
+          -p 8080:80 \
+          my-php-app
+
+    - name: Wait for web app to start
+      run: |
+        for i in {1..10}; do
+          if docker exec webapp curl -s http://localhost/index.html > /dev/null; then
+            echo "Web is up"
+            break
+          fi
+          echo "Waiting for web to start..."
+          sleep 3
+        done
+
+    - name: Run Selenium UI test in container
+      run: |
+        docker run --rm \
+          --network testnet \
           -v ${{ github.workspace }}/tests:/tests \
-          node:18-alpine sh -c "npm install selenium-webdriver && node /tests/UITest.mjs"
+          selenium/standalone-chrome:latest \
+          bash -c "apt update && apt install -y nodejs npm && npm install selenium-webdriver && node /tests/UITest.mjs"
 
     - name: Run OWASP Dependency Check
       uses: dependency-check/Dependency-Check_Action@main
@@ -54,6 +64,6 @@ jobs:
         git config --global user.email "2301861@sit.singaporetech.edu.sg"
         git remote add local http://localhost:3000/repository.git || true
         git fetch local || true
-        git add .github/workflows/ci-test.yml
-        git commit -m "Add CI workflow"
+        git add .github/workflows/action-test.yml
+        git commit -m "Add CI workflow" || echo "Nothing to commit"
         git push local HEAD:main
