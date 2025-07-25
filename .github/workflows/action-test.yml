@@ -66,4 +66,6 @@ jobs:
         git fetch local || true
         git add .github/workflows/action-test.yml
         git commit -m "Add CI workflow" || echo "Nothing to commit"
+        git add .github/workflows/action-test.yml
+        git commit -m "Add CI workflow" || echo "Nothing to commit"
         git push local HEAD:main
