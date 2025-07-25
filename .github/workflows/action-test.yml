@@ -8,31 +8,37 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    services:
-      web:
-        build:
-          context: .
-          dockerfile: web.dockerfile
-        ports:
-          - 8080:80
-        options: >-
-          --health-cmd="curl --fail http://localhost || exit 1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: Wait for web server
-      run: sleep 15
+    - name: Set up Node.js for Selenium test
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
 
-    - name: Run Selenium UI test
+    - name: Install Selenium WebDriver
+      run: npm install selenium-webdriver
+
+    - name: Build PHP web app Docker image
+      run: docker build -f web.Dockerfile -t my-php-app .
+
+    - name: Run PHP web app container
+      run: docker run -d --name web -p 8080:80 my-php-app
+
+    - name: Wait for web app to be ready
       run: |
-        docker run --rm --network host \
-          -v ${{ github.workspace }}/tests:/tests \
-          node:18-alpine sh -c "npm install selenium-webdriver && node /tests/UITest.mjs"
+        for i in {1..10}; do
+          if curl -sSf http://localhost:8080/index.html > /dev/null; then
+            echo "✅ Web is up"
+            break
+          fi
+          echo "⏳ Waiting for web to start..."
+          sleep 3
+        done
+
+    - name: Run Selenium UI Test
+      run: node tests/UITest.mjs
 
     - name: Run OWASP Dependency Check
       uses: dependency-check/Dependency-Check_Action@main
@@ -55,5 +61,5 @@ jobs:
         git remote add local http://localhost:3000/repository.git || true
         git fetch local || true
         git add .github/workflows/action-test.yml
-        git commit -m "Add CI workflow"
+        git commit -m "Add CI workflow" || echo "Nothing to commit"
         git push local HEAD:main
